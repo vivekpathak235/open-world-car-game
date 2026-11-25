@@ -6215,29 +6215,36 @@ vWaterDepth=waterDepth;vWaterWorld=(modelMatrix*vec4(transformed,1.0)).xyz;vWate
         entry.phaseOf[ap.section.id] = phase;
         S.signalMap[nid + '|' + ap.section.id] = entry;
       }
-      // props: one pole + two phase lamps (one per approach axis) at the node
+      // props: one pole + two phase lamps at the junction CORNER - off the
+      // paved area, right of the principal approach axis, past the widest road
       try {
         var scene = ADAPT.game.scene;
-        var y = (typeof ADAPT.game.groundY === 'function' ? ADAPT.game.groundY(entry.x, entry.z) : 0);
+        var maxW = 0;
+        for (var ai = 0; ai < apps.length; ai++) maxW = Math.max(maxW, apps[ai].section.width || 6);
+        var off = maxW / 2 + 2.2;                  // clear of the travel lanes
+        var rx = az, rz = -ax;                     // right of the principal axis
+        var bx = entry.x + rx * off, bz = entry.z + rz * off;
+        var y = (typeof ADAPT.game.groundY === 'function' ? ADAPT.game.groundY(bx, bz) : 0);
         var poleMat = new ADAPT.StdMat({ color: 0x3a4148 });
         var pole = new ADAPT.Mesh(new ADAPT.Box(0.18, 3.4, 0.18), poleMat);
         pole.matrixAutoUpdate = false;
         pole.matrix.makeRotationY(0);
-        pole.matrix.setPosition(entry.x, y + 1.7, entry.z);
+        pole.matrix.setPosition(bx, y + 1.7, bz);
         scene.add(pole);
         entry.matA = new ADAPT.StdMat({ color: 0x111111, emissive: 0xff2222, emissiveIntensity: 1.6 });
         entry.matB = new ADAPT.StdMat({ color: 0x111111, emissive: 0xff2222, emissiveIntensity: 1.6 });
         var lampA = new ADAPT.Mesh(new ADAPT.Box(0.34, 0.34, 0.34), entry.matA);
         lampA.matrixAutoUpdate = false;
         lampA.matrix.makeRotationY(0);
-        lampA.matrix.setPosition(entry.x + az * 0.5, y + 3.2, entry.z + ax * 0.5);
+        lampA.matrix.setPosition(bx + ax * 0.45, y + 3.2, bz + az * 0.45);
         scene.add(lampA);
         var lampB = new ADAPT.Mesh(new ADAPT.Box(0.34, 0.34, 0.34), entry.matB);
         lampB.matrixAutoUpdate = false;
         lampB.matrix.makeRotationY(0);
-        lampB.matrix.setPosition(entry.x - az * 0.5, y + 2.8, entry.z - ax * 0.5);
+        lampB.matrix.setPosition(bx - ax * 0.45, y + 2.8, bz - az * 0.45);
         scene.add(lampB);
         entry.lampTick = 0;
+        entry.px = bx; entry.pz = bz;      // pole base (test/QA visibility)
       } catch (e2) { /* props are cosmetic; logic still applies */ }
       S.signals.push(entry);
     }
@@ -6647,7 +6654,9 @@ vWaterDepth=waterDepth;vWaterWorld=(modelMatrix*vec4(transformed,1.0)).xyz;vWate
     // test hook: signalized junctions and current green phase
     _signals: function () {
       return S.signals.map(function (e) {
-        return { node: e.node, x: +e.x.toFixed(0), z: +e.z.toFixed(0), green: signalPhase(e) };
+        return { node: e.node, x: +e.x.toFixed(0), z: +e.z.toFixed(0), green: signalPhase(e),
+                 poleX: e.px !== undefined ? +e.px.toFixed(1) : null,
+                 poleZ: e.pz !== undefined ? +e.pz.toFixed(1) : null };
       });
     },
     // test hook: min same-lane gap right now (m), for spacing verification
