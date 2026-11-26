@@ -6524,13 +6524,16 @@ vWaterDepth=waterDepth;vWaterWorld=(modelMatrix*vec4(transformed,1.0)).xyz;vWate
       }
     }
     if (pull) {
-      car.clearT = 0;
+      car.clearT = 0; car.clearSince = 0;
       target = 0; newState = 'pullover'; car.why = 'police';
       car.targetOffset = laneOffset(car.section) + 0.6; // edge of the lane
     } else {
       car.targetOffset = laneOffset(car.section);
       if (car.state === 'pullover') {
-        car.clearT += CFG.thinkEvery * 0.016;
+        // wall clock: think-cadence math assumes 60fps and stretches the
+        // resume delay several-fold on slow devices
+        if (!car.clearSince) car.clearSince = performance.now();
+        car.clearT = (performance.now() - car.clearSince) / 1000;
         if (car.clearT < CFG.pulloverResumeDelay) { target = 0; newState = 'pullover'; car.why = 'police'; }
       }
     }
@@ -6686,7 +6689,17 @@ vWaterDepth=waterDepth;vWaterWorld=(modelMatrix*vec4(transformed,1.0)).xyz;vWate
     var dt = Math.min(0.05, (t - S.lastT) / 1000) || 0.016;
     S.lastT = t;
     var st = ADAPT.game.debugState();
-    if (!st.ready || st.drivingPaused) return;
+    if (!st.ready) return;
+    if (st.drivingPaused) {                        // freeze, remembering when
+      if (!S.pauseStart) S.pauseStart = performance.now();
+      return;
+    }
+    if (S.pauseStart) {                            // resume: shift wall-clock timers
+      var pausedFor = performance.now() - S.pauseStart;
+      S.pauseStart = 0;
+      for (var pi = 0; pi < S.cars.length; pi++)
+        if (S.cars[pi].clearSince) S.cars[pi].clearSince += pausedFor;
+    }
     S.frame++;
     S.lastYaw = st.yaw || 0;
     S.simT += dt;
