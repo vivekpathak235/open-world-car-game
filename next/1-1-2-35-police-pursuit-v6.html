@@ -5422,11 +5422,13 @@ vWaterDepth=waterDepth;vWaterWorld=(modelMatrix*vec4(transformed,1.0)).xyz;vWate
       this.updateEngineAudio(st);
       if (performance.now() - this.resolutionSince > CFG.bustedSeqMs) this.finishTermination();
     } else if (this.mode === 'escaped') {
-      // units disengage and drive off; sequence then resets
+      // units disengage and drive off; sequence then resets. The sequence
+      // runs its full length so the ESCAPED feedback is actually readable:
+      // escaping units are already beyond disengageDist and vanish at once,
+      // which must not cut the display short.
       this.updateUnits(dt, st);
       this.updateEngineAudio(st);
-      if (this.units.length === 0 ||
-          performance.now() - this.resolutionSince > CFG.escapeSeqMs) this.finishTermination();
+      if (performance.now() - this.resolutionSince > CFG.escapeSeqMs) this.finishTermination();
     } else if (this.mode === 'terminating') {
       this.updateUnits(dt, st);
       this.updateEngineAudio(st);
